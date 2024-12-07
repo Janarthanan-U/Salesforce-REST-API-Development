@@ -1,0 +1,90 @@
+@RestResource(urlMapping='/DemoService/*')
+global class RestServiceDemo {
+
+    @HttpGet
+    global static ResponseData getAccountRecord(){
+        
+        RestRequest req = RestContext.request;
+        system.debug(req.requestURI);
+        
+        // Extract accId from URL, e.g., DemoService/1234
+        String accId = req.requestURI.substring(req.requestURI.lastIndexOf('/') + 1);
+        
+        Account acc = [SELECT Id, Name, Industry FROM Account WHERE Id = :accId];
+        ResponseData objData = new ResponseData();
+        objData.account = acc;
+
+        List<Contact> con = [SELECT Id, LastName FROM Contact WHERE AccountId = :accId];
+        objData.contactList = con;
+
+        return objData;
+    }
+    
+    global class ResponseData{
+        global Account account;
+        global List<Contact> contactList;
+    }
+
+    @HttpPost
+    global static Account createAccount(String AccountName){
+        Account acc = new Account();
+        acc.name = AccountName;
+        insert acc;
+        return acc;
+    }
+    
+    // Updated @HttpPut method to fetch accId from URI and properly handle request body
+    @HttpPut
+    global static Account updateAccount() {
+        RestRequest req = RestContext.request;
+        String accId = req.requestURI.substring(req.requestURI.lastIndexOf('/') + 1);
+
+        Account acc = [SELECT Id, Name FROM Account WHERE Id = :accId];
+        if (acc != null) {
+            // Deserialize the request body to a map
+            Map<String, Object> requestBody = (Map<String, Object>) JSON.deserializeUntyped(req.requestBody.toString());
+            String newAccountName = (String) requestBody.get('AccountName'); // Extract the new account name
+            
+            if (newAccountName != null) {
+                acc.Name = newAccountName;
+                update acc;
+            }
+        }
+        return acc;
+    }
+    
+    // Updated @HttpPatch method to fetch accId from URI and properly handle request body
+    @HttpPatch
+    global static Account patchAccount() {
+        RestRequest req = RestContext.request;
+        String accId = req.requestURI.substring(req.requestURI.lastIndexOf('/') + 1);
+
+        Account acc = [SELECT Id, Name FROM Account WHERE Id = :accId];
+        if (acc != null) {
+            // Deserialize the request body to a map
+            Map<String, Object> requestBody = (Map<String, Object>) JSON.deserializeUntyped(req.requestBody.toString());
+            String accountName = (String) requestBody.get('AccountName'); // Extract the account name
+            
+            if (accountName != null) {
+                acc.Name = accountName;
+                update acc;
+            }
+        }
+        return acc;
+    }
+    
+    // Updated @HttpDelete method to fetch accId from URI
+    @HttpDelete
+    global static String deleteAccount() {
+        RestRequest req = RestContext.request;
+        String accId = req.requestURI.substring(req.requestURI.lastIndexOf('/') + 1);
+
+        Account acc = [SELECT Id FROM Account WHERE Id = :accId];
+        if (acc != null) {
+            delete acc;
+            return 'Account deleted';
+        } else {
+            return 'Account not found';
+        }
+    }
+}
